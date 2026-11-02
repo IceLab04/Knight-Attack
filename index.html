@@ -1,6 +1,6 @@
 ```html
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport"
@@ -8,6 +8,7 @@
 
     <title>Knight Attack</title>
 
+    <!-- Unity-Loader frühzeitig laden -->
     <link rel="preload"
           href="Build/Knight%20Attack%20updates.loader.js"
           as="script"
@@ -74,17 +75,22 @@
             text-shadow: 0 0 12px rgba(255, 100, 0, 0.5);
         }
 
+        /* Dauerhaft drehender Ladekreis */
         #loading-spinner {
             width: 48px;
             height: 48px;
             border: 5px solid rgba(255, 140, 0, 0.2);
             border-top: 5px solid #ff8c00;
+            border-right: 5px solid #ffb347;
             border-radius: 50%;
-            animation: spin 0.9s linear infinite;
+            animation: spin 0.8s linear infinite;
             margin-bottom: 25px;
+            will-change: transform;
         }
 
+        /* Fortschrittsbalken */
         #progress-container {
+            position: relative;
             width: min(70%, 350px);
             height: 12px;
             border: 1px solid #ff8c00;
@@ -94,11 +100,30 @@
         }
 
         #progress-bar {
+            position: relative;
             width: 0%;
             height: 100%;
             background: #ff8c00;
             border-radius: 10px;
             transition: width 0.15s linear;
+            overflow: hidden;
+        }
+
+        /* Kleine Lichtbewegung im geladenen Bereich */
+        #progress-bar::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -50%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.55),
+                transparent
+            );
+            animation: progress-shine 1.2s linear infinite;
         }
 
         #progress-text {
@@ -122,6 +147,11 @@
             to { transform: rotate(360deg); }
         }
 
+        @keyframes progress-shine {
+            from { left: -50%; }
+            to { left: 110%; }
+        }
+
         /* Normaler Vollbild-Button */
         #fullscreen-button {
             position: absolute;
@@ -142,14 +172,9 @@
             background: rgba(255, 140, 0, 0.2);
         }
 
-        /* EXTREM kleiner Button zum Verlassen des Vollbildmodus */
-        #fullscreen-button.exit-small {
-            padding: 1px 2px;
-            font-size: 5px;
-            line-height: 1;
-            border-width: 1px;
-            border-radius: 2px;
-            opacity: 0.55;
+        /* Im Vollbild den Button vollständig ausblenden */
+        #game-container.fullscreen-active #fullscreen-button {
+            display: none;
         }
     </style>
 </head>
@@ -164,8 +189,10 @@
                 tabindex="-1">
         </canvas>
 
+        <!-- Ladeanzeige bleibt innerhalb des Vollbildbereichs -->
         <div id="loading-cover">
-            <div id="loading-title">Knight Attack wird geladen</div>
+
+            <div id="loading-title">Knight Attack is loading</div>
 
             <div id="loading-spinner"></div>
 
@@ -176,6 +203,7 @@
             <div id="progress-text">0 %</div>
 
             <div id="loading-error"></div>
+
         </div>
 
         <button id="fullscreen-button">⛶ Vollbild</button>
@@ -194,8 +222,10 @@
         /* Seitenverhältnis 2400 x 1080 beibehalten */
         function resizeGame() {
             const targetRatio = 2400 / 1080;
+
             const width = gameContainer.clientWidth;
             const height = gameContainer.clientHeight;
+
             const windowRatio = width / height;
 
             if (windowRatio > targetRatio) {
@@ -212,7 +242,7 @@
 
         resizeGame();
 
-        /* Vollbild ein- und ausschalten */
+        /* Vollbild einschalten */
         fullscreenButton.addEventListener("click", async () => {
             try {
                 if (!document.fullscreenElement) {
@@ -222,47 +252,54 @@
                         try {
                             await screen.orientation.lock("landscape");
                         } catch (error) {
-                            // Ausrichtungssperre nicht überall verfügbar.
+                            // Nicht jeder Browser unterstützt die Sperre.
                         }
                     }
-                } else {
-                    await document.exitFullscreen();
                 }
             } catch (error) {
-                console.warn("Vollbild konnte nicht geändert werden:", error);
+                console.warn("Vollbild konnte nicht aktiviert werden:", error);
             }
         });
 
+        /* Vollbildstatus aktualisieren */
         document.addEventListener("fullscreenchange", () => {
-            if (document.fullscreenElement) {
-                fullscreenButton.textContent = "Vollbild verlassen";
-                fullscreenButton.classList.add("exit-small");
+            if (document.fullscreenElement === gameContainer) {
+                gameContainer.classList.add("fullscreen-active");
             } else {
-                fullscreenButton.textContent = "⛶ Vollbild";
-                fullscreenButton.classList.remove("exit-small");
+                gameContainer.classList.remove("fullscreen-active");
             }
 
             resizeGame();
         });
 
-        /* Unity-Dateien */
+        /* Unity-Build-Dateien */
         const buildUrl = "Build";
 
-        const loaderUrl = buildUrl + "/Knight Attack updates.loader.js";
+        const loaderUrl =
+            buildUrl + "/Knight Attack updates.loader.js";
 
         const config = {
-            dataUrl: buildUrl + "/Knight Attack updates.data.unityweb",
-            frameworkUrl: buildUrl + "/Knight Attack updates.framework.js.unityweb",
-            codeUrl: buildUrl + "/Knight Attack updates.wasm.unityweb",
+            dataUrl:
+                buildUrl + "/Knight Attack updates.data.unityweb",
+
+            frameworkUrl:
+                buildUrl + "/Knight Attack updates.framework.js.unityweb",
+
+            codeUrl:
+                buildUrl + "/Knight Attack updates.wasm.unityweb",
+
             streamingAssetsUrl: "StreamingAssets",
             companyName: "ICE Labs",
             productName: "Knight Attack",
             productVersion: "0.0"
         };
 
-        /* Ladefortschritt aktualisieren */
+        /* Tatsächlichen Unity-Ladefortschritt anzeigen */
         function updateProgress(progress) {
-            const percent = Math.min(100, Math.round(progress * 100));
+            const percent = Math.min(
+                100,
+                Math.max(0, Math.round(progress * 100))
+            );
 
             progressBar.style.width = percent + "%";
             progressText.textContent = percent + " %";
@@ -270,31 +307,44 @@
 
         /* Unity-Loader laden */
         const script = document.createElement("script");
+
         script.src = loaderUrl;
 
         script.onload = () => {
-            createUnityInstance(canvas, config, (progress) => {
-                updateProgress(progress);
-            }).then((unityInstance) => {
+
+            createUnityInstance(
+                canvas,
+                config,
+                (progress) => {
+                    updateProgress(progress);
+                }
+            ).then((unityInstance) => {
 
                 updateProgress(100);
+
+                /* Erst nach vollständigem Laden ausblenden */
                 loadingCover.classList.add("hidden");
 
                 resizeGame();
 
             }).catch((message) => {
+
                 loadingError.style.display = "block";
-                loadingError.textContent = "Fehler beim Laden: " + message;
-                progressText.textContent = "Laden fehlgeschlagen";
+                loadingError.textContent =
+                    "Loading error: " + message;
+
+                progressText.textContent = "Loading failed";
             });
         };
 
         script.onerror = () => {
-            loadingError.style.display = "block";
-            loadingError.textContent =
-                "Der Unity-Loader konnte nicht geladen werden. Bitte Seite neu laden.";
 
-            progressText.textContent = "Laden fehlgeschlagen";
+            loadingError.style.display = "block";
+
+            loadingError.textContent =
+                "The Unity loader could not be loaded. Please reload the page.";
+
+            progressText.textContent = "Loading failed";
         };
 
         document.body.appendChild(script);

@@ -2,289 +2,251 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8">
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Knight Attack</title>
 
-  <title>Knight Attack</title>
+    <!-- Unity-Loader frühzeitig laden -->
+    <link rel="preload"
+          href="Build/Knight%20Attack%20updates.loader.js"
+          as="script"
+          fetchpriority="high">
 
-  <!-- Mittelalterliche Schrift -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
 
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: #000;
-    }
+        #game-container {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+            overflow: hidden;
+        }
 
-    #game-container {
-      position: fixed;
-      inset: 0;
-      width: 100vw;
-      height: 100vh;
-      background: #000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
+        #unity-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
 
-    #unity-canvas {
-      display: block;
-      flex: none;
-      background: #000;
-    }
+        /* Ladeanzeige */
+        #loading-cover {
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+            color: #ff8c00;
+            font-family: Georgia, serif;
+            text-align: center;
+        }
 
-    /* Ladebildschirm */
-    #loading-cover {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #000;
-      z-index: 10;
-      gap: 28px;
-    }
+        #loading-cover.hidden {
+            display: none;
+        }
 
-    #loading-cover.hidden {
-      display: none;
-    }
+        #loading-title {
+            font-size: clamp(24px, 4vw, 42px);
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin-bottom: 25px;
+            text-shadow: 0 0 12px rgba(255, 100, 0, 0.5);
+        }
 
-    #loading-text {
-      color: #ff8c00;
-      font-family: 'Cinzel', Georgia, serif;
-      font-size: clamp(22px, 3vw, 42px);
-      font-weight: 800;
-      letter-spacing: 2px;
-      text-align: center;
-      padding: 15px;
-      text-shadow:
-        0 0 8px rgba(255, 140, 0, 0.8),
-        0 0 20px rgba(255, 100, 0, 0.5);
-    }
+        #loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 5px solid rgba(255, 140, 0, 0.2);
+            border-top: 5px solid #ff8c00;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
 
-    /* Bewegender Ladekreis */
-    #loading-spinner {
-      width: 55px;
-      height: 55px;
-      border: 5px solid rgba(255, 140, 0, 0.2);
-      border-top: 5px solid #ff8c00;
-      border-right: 5px solid #ff8c00;
-      border-radius: 50%;
-      animation: spin 0.85s linear infinite;
-      box-shadow: 0 0 14px rgba(255, 140, 0, 0.35);
-    }
+        #loading-error {
+            display: none;
+            max-width: 80%;
+            margin-top: 20px;
+            color: #ff5555;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+        }
 
-    @keyframes spin {
-      from {
-        transform: rotate(0deg);
-      }
-      to {
-        transform: rotate(360deg);
-      }
-    }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
 
-    /* Normaler Vollbild-Button */
-    #fullscreen-button {
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      z-index: 30;
-      padding: 12px 18px;
-      color: white;
-      background: rgba(25, 25, 25, 0.9);
-      border: 2px solid white;
-      border-radius: 8px;
-      font-size: 15px;
-      font-weight: bold;
-      cursor: pointer;
-    }
+        /* Vollbild-Button */
+        #fullscreen-button {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 30;
+            padding: 9px 14px;
+            border: 1px solid #ff8c00;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.75);
+            color: #ff8c00;
+            font-family: Georgia, serif;
+            font-size: 15px;
+            cursor: pointer;
+        }
 
-    #fullscreen-button:active {
-      background: #555;
-    }
+        #fullscreen-button:hover {
+            background: rgba(255, 140, 0, 0.2);
+        }
 
-    /* Kleiner Button zum Verlassen des Vollbilds */
-    #fullscreen-button.exit-small {
-      font-size: 10px;
-      padding: 4px 7px;
-      border-width: 1px;
-      opacity: 0.65;
-    }
-  </style>
+        /* Nur der Button zum Verlassen wird stark verkleinert */
+        #fullscreen-button.exit-small {
+            padding: 2px 4px;
+            font-size: 8px;
+            line-height: 1;
+            border-width: 1px;
+            opacity: 0.65;
+        }
+    </style>
 </head>
 
 <body>
-
-  <div id="game-container">
-
-    <canvas
-      id="unity-canvas"
-      width="2400"
-      height="1080"
-      tabindex="-1">
-    </canvas>
-
-    <div id="loading-cover">
-      <div id="loading-text">
-        Knight Attack wird geladen
-      </div>
-
-      <div id="loading-spinner"></div>
+    <div id="game-container">
+        <canvas id="unity-canvas"
+                width="2400"
+                height="1080"
+                tabindex="-1">
+        </canvas>
     </div>
 
-    <button id="fullscreen-button" type="button">
-      ⛶ Vollbild
-    </button>
+    <div id="loading-cover">
+        <div id="loading-title">Knight Attack wird geladen</div>
+        <div id="loading-spinner"></div>
+        <div id="loading-error"></div>
+    </div>
 
-  </div>
+    <button id="fullscreen-button">⛶ Vollbild</button>
 
-  <script>
-    const canvas = document.querySelector("#unity-canvas");
-    const loadingCover = document.querySelector("#loading-cover");
-    const gameContainer = document.querySelector("#game-container");
-    const fullscreenButton = document.querySelector("#fullscreen-button");
+    <script>
+        const canvas = document.querySelector("#unity-canvas");
+        const gameContainer = document.querySelector("#game-container");
+        const loadingCover = document.querySelector("#loading-cover");
+        const loadingError = document.querySelector("#loading-error");
+        const fullscreenButton = document.querySelector("#fullscreen-button");
 
-    canvas.width = 2400;
-    canvas.height = 1080;
+        /* Das Spiel bleibt immer im Seitenverhältnis 2400 x 1080 */
+        function resizeGame() {
+            const targetRatio = 2400 / 1080;
+            const windowRatio = window.innerWidth / window.innerHeight;
 
-    /* Spielgröße an Bildschirm anpassen */
-    function resizeGame() {
-      const cw = window.innerWidth;
-      const ch = window.innerHeight;
-
-      const targetRatio = 2400 / 1080;
-      const availableRatio = cw / ch;
-
-      let width;
-      let height;
-
-      if (availableRatio > targetRatio) {
-        height = ch;
-        width = height * targetRatio;
-      } else {
-        width = cw;
-        height = width / targetRatio;
-      }
-
-      canvas.style.width = Math.floor(width) + "px";
-      canvas.style.height = Math.floor(height) + "px";
-    }
-
-    window.addEventListener("resize", resizeGame);
-    window.addEventListener("orientationchange", resizeGame);
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", resizeGame);
-    }
-
-    resizeGame();
-
-    /* Vollbild ein- und ausschalten */
-    fullscreenButton.addEventListener("click", async () => {
-      try {
-        if (!document.fullscreenElement) {
-          if (gameContainer.requestFullscreen) {
-            await gameContainer.requestFullscreen();
-          }
-
-          if (screen.orientation && screen.orientation.lock) {
-            try {
-              await screen.orientation.lock("landscape");
-            } catch (e) {
-              console.log("Querformatsperre nicht unterstützt.");
+            if (windowRatio > targetRatio) {
+                canvas.style.height = "100%";
+                canvas.style.width = (window.innerHeight * targetRatio) + "px";
+            } else {
+                canvas.style.width = "100%";
+                canvas.style.height = (window.innerWidth / targetRatio) + "px";
             }
-          }
-        } else {
-          await document.exitFullscreen();
         }
-      } catch (e) {
-        console.log("Vollbild nicht verfügbar:", e);
-      }
 
-      resizeGame();
-    });
-
-    /* Button-Größe je nach Vollbildstatus */
-    document.addEventListener("fullscreenchange", () => {
-      if (document.fullscreenElement) {
-        fullscreenButton.textContent = "Vollbild verlassen";
-        fullscreenButton.classList.add("exit-small");
-      } else {
-        fullscreenButton.textContent = "⛶ Vollbild";
-        fullscreenButton.classList.remove("exit-small");
-      }
-
-      resizeGame();
-    });
-
-    /* Unity Build laden */
-    const buildUrl = "Build";
-
-    const loaderUrl = buildUrl + "/Knight Attack updates.loader.js";
-
-    const config = {
-      dataUrl: buildUrl + "/Knight Attack updates.data.unityweb",
-      frameworkUrl: buildUrl + "/Knight Attack updates.framework.js.unityweb",
-      codeUrl: buildUrl + "/Knight Attack updates.wasm.unityweb",
-      streamingAssetsUrl: "StreamingAssets",
-      companyName: "ICE Labs",
-      productName: "Knight Attack",
-      productVersion: "0.0"
-    };
-
-    const script = document.createElement("script");
-
-    script.src = loaderUrl;
-
-    script.onload = () => {
-      createUnityInstance(canvas, config, (progress) => {
-        // Unity lädt im Hintergrund.
-      })
-      .then(() => {
-        loadingCover.classList.add("hidden");
+        window.addEventListener("resize", resizeGame);
+        window.addEventListener("orientationchange", resizeGame);
         resizeGame();
-      })
-      .catch((message) => {
-        loadingCover.innerHTML =
-          '<div style="color:#ff8c00;font-family:Georgia,serif;text-align:center;padding:20px;">' +
-          'Knight Attack konnte nicht geladen werden.<br><br>' +
-          message +
-          '</div>';
-      });
-    };
 
-    script.onerror = () => {
-      loadingCover.innerHTML =
-        '<div style="color:#ff8c00;font-family:Georgia,serif;text-align:center;padding:20px;">' +
-        'Die Unity-Ladedatei konnte nicht gefunden werden.<br>' +
-        'Bitte überprüfe den Build-Ordner.' +
-        '</div>';
-    };
+        /* Vollbild ein- und ausschalten */
+        fullscreenButton.addEventListener("click", async () => {
+            try {
+                if (!document.fullscreenElement) {
+                    await gameContainer.requestFullscreen();
 
-    document.body.appendChild(script);
-  </script>
+                    if (screen.orientation && screen.orientation.lock) {
+                        try {
+                            await screen.orientation.lock("landscape");
+                        } catch (error) {
+                            // Nicht jeder Browser unterstützt die Ausrichtungssperre.
+                        }
+                    }
+                } else {
+                    await document.exitFullscreen();
+                }
+            } catch (error) {
+                console.warn("Vollbild konnte nicht geändert werden:", error);
+            }
+        });
 
-  <!-- Cloudflare Web Analytics -->
-  <script
-    type="module"
-    src="https://static.cloudflareinsights.com/beacon.min.js"
-    data-cf-beacon='{"token": "2410bef32c094aab86a8241c494b76f2"}'>
-  </script>
-  <!-- End Cloudflare Web Analytics -->
+        document.addEventListener("fullscreenchange", () => {
+            if (document.fullscreenElement) {
+                fullscreenButton.textContent = "Vollbild verlassen";
+                fullscreenButton.classList.add("exit-small");
+            } else {
+                fullscreenButton.textContent = "⛶ Vollbild";
+                fullscreenButton.classList.remove("exit-small");
+            }
 
+            resizeGame();
+        });
+
+        /* Unity-Konfiguration – Build-Dateinamen unverändert */
+        const buildUrl = "Build";
+
+        const loaderUrl = buildUrl + "/Knight Attack updates.loader.js";
+
+        const config = {
+            dataUrl: buildUrl + "/Knight Attack updates.data.unityweb",
+            frameworkUrl: buildUrl + "/Knight Attack updates.framework.js.unityweb",
+            codeUrl: buildUrl + "/Knight Attack updates.wasm.unityweb",
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "ICE Labs",
+            productName: "Knight Attack",
+            productVersion: "0.0"
+        };
+
+        /* Unity-Loader starten */
+        const script = document.createElement("script");
+        script.src = loaderUrl;
+
+        script.onload = () => {
+            createUnityInstance(canvas, config, () => {
+                // Unity lädt das Spiel.
+            }).then((unityInstance) => {
+                loadingCover.classList.add("hidden");
+                resizeGame();
+            }).catch((message) => {
+                loadingError.style.display = "block";
+                loadingError.textContent = "Fehler beim Laden: " + message;
+            });
+        };
+
+        script.onerror = () => {
+            loadingError.style.display = "block";
+            loadingError.textContent =
+                "Der Unity-Loader konnte nicht geladen werden. Bitte Seite neu laden.";
+        };
+
+        document.body.appendChild(script);
+    </script>
+
+    <!-- Cloudflare Analytics -->
+    <script
+        defer
+        src="https://static.cloudflareinsights.com/beacon.min.js"
+        data-cf-beacon='{"token": "2410bef32c094aab86a8241c494b76f2"}'>
+    </script>
 </body>
 </html>
 ```

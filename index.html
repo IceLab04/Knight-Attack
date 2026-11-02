@@ -96,7 +96,7 @@
       }
     }
 
-    /* Vollbild-Button */
+    /* Normaler Vollbild-Button */
     #fullscreen-button {
       position: absolute;
       top: 15px;
@@ -114,6 +114,14 @@
 
     #fullscreen-button:active {
       background: #555;
+    }
+
+    /* Kleiner Button zum Verlassen des Vollbilds */
+    #fullscreen-button.exit-small {
+      font-size: 10px;
+      padding: 4px 7px;
+      border-width: 1px;
+      opacity: 0.65;
     }
   </style>
 </head>
@@ -209,9 +217,15 @@
       resizeGame();
     });
 
+    /* Button-Größe je nach Vollbildstatus */
     document.addEventListener("fullscreenchange", () => {
-      fullscreenButton.textContent =
-        document.fullscreenElement ? "⛶ Vollbild verlassen" : "⛶ Vollbild";
+      if (document.fullscreenElement) {
+        fullscreenButton.textContent = "Vollbild verlassen";
+        fullscreenButton.classList.add("exit-small");
+      } else {
+        fullscreenButton.textContent = "⛶ Vollbild";
+        fullscreenButton.classList.remove("exit-small");
+      }
 
       resizeGame();
     });
@@ -236,7 +250,6 @@
     script.src = loaderUrl;
 
     script.onload = () => {
-
       createUnityInstance(canvas, config, (progress) => {
         // Unity lädt im Hintergrund.
       })

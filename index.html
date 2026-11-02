@@ -1,4 +1,4 @@
-```html
+html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,6 +8,7 @@
 
     <title>Knight Attack</title>
 
+    <!-- Unity-Loader frühzeitig laden -->
     <link rel="preload"
           href="Build/Knight%20Attack%20updates.loader.js"
           as="script"
@@ -74,6 +75,7 @@
             text-shadow: 0 0 12px rgba(255, 100, 0, 0.5);
         }
 
+        /* Dauerhaft drehender Ladekreis */
         #loading-spinner {
             width: 48px;
             height: 48px;
@@ -86,6 +88,7 @@
             will-change: transform;
         }
 
+        /* Fortschrittsbalken */
         #progress-container {
             position: relative;
             width: min(70%, 350px);
@@ -106,6 +109,7 @@
             overflow: hidden;
         }
 
+        /* Kleine Lichtbewegung im geladenen Bereich */
         #progress-bar::after {
             content: "";
             position: absolute;
@@ -148,7 +152,7 @@
             to { left: 110%; }
         }
 
-        /* Vollbild-Button */
+        /* Normaler Vollbild-Button */
         #fullscreen-button {
             position: absolute;
             top: 12px;
@@ -168,14 +172,9 @@
             background: rgba(255, 140, 0, 0.2);
         }
 
-        /* Im Vollbild keinen Zurück-Button anzeigen */
+        /* Im Vollbild den Button vollständig ausblenden */
         #game-container.fullscreen-active #fullscreen-button {
             display: none;
-        }
-
-        /* Auf iOS den Vollbild-Button vollständig entfernen */
-        html.ios-device #fullscreen-button {
-            display: none !important;
         }
     </style>
 </head>
@@ -190,7 +189,9 @@
                 tabindex="-1">
         </canvas>
 
+        <!-- Ladeanzeige bleibt innerhalb des Vollbildbereichs -->
         <div id="loading-cover">
+
             <div id="loading-title">Knight Attack is loading</div>
 
             <div id="loading-spinner"></div>
@@ -202,6 +203,7 @@
             <div id="progress-text">0 %</div>
 
             <div id="loading-error"></div>
+
         </div>
 
         <button id="fullscreen-button">⛶ Vollbild</button>
@@ -209,7 +211,151 @@
     </div>
 
     <script>
-        /* iPhone und iPad erkennen */
-        const isIOS =
-            /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-            (navigator.platform === "MacIntel
+        const canvas = document.querySelector("#unity-canvas");
+        const gameContainer = document.querySelector("#game-container");
+        const loadingCover = document.querySelector("#loading-cover");
+        const loadingError = document.querySelector("#loading-error");
+        const progressBar = document.querySelector("#progress-bar");
+        const progressText = document.querySelector("#progress-text");
+        const fullscreenButton = document.querySelector("#fullscreen-button");
+
+        /* Seitenverhältnis 2400 x 1080 beibehalten */
+        function resizeGame() {
+            const targetRatio = 2400 / 1080;
+
+            const width = gameContainer.clientWidth;
+            const height = gameContainer.clientHeight;
+
+            const windowRatio = width / height;
+
+            if (windowRatio > targetRatio) {
+                canvas.style.height = "100%";
+                canvas.style.width = (height * targetRatio) + "px";
+            } else {
+                canvas.style.width = "100%";
+                canvas.style.height = (width / targetRatio) + "px";
+            }
+        }
+
+        window.addEventListener("resize", resizeGame);
+        window.addEventListener("orientationchange", resizeGame);
+
+        resizeGame();
+
+        /* Vollbild einschalten */
+        fullscreenButton.addEventListener("click", async () => {
+            try {
+                if (!document.fullscreenElement) {
+                    await gameContainer.requestFullscreen();
+
+                    if (screen.orientation && screen.orientation.lock) {
+                        try {
+                            await screen.orientation.lock("landscape");
+                        } catch (error) {
+                            // Nicht jeder Browser unterstützt die Sperre.
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn("Vollbild konnte nicht aktiviert werden:", error);
+            }
+        });
+
+        /* Vollbildstatus aktualisieren */
+        document.addEventListener("fullscreenchange", () => {
+            if (document.fullscreenElement === gameContainer) {
+                gameContainer.classList.add("fullscreen-active");
+            } else {
+                gameContainer.classList.remove("fullscreen-active");
+            }
+
+            resizeGame();
+        });
+
+        /* Unity-Build-Dateien */
+        const buildUrl = "Build";
+
+        const loaderUrl =
+            buildUrl + "/Knight Attack updates.loader.js";
+
+        const config = {
+            dataUrl:
+                buildUrl + "/Knight Attack updates.data.unityweb",
+
+            frameworkUrl:
+                buildUrl + "/Knight Attack updates.framework.js.unityweb",
+
+            codeUrl:
+                buildUrl + "/Knight Attack updates.wasm.unityweb",
+
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "ICE Labs",
+            productName: "Knight Attack",
+            productVersion: "0.0"
+        };
+
+        /* Tatsächlichen Unity-Ladefortschritt anzeigen */
+        function updateProgress(progress) {
+            const percent = Math.min(
+                100,
+                Math.max(0, Math.round(progress * 100))
+            );
+
+            progressBar.style.width = percent + "%";
+            progressText.textContent = percent + " %";
+        }
+
+        /* Unity-Loader laden */
+        const script = document.createElement("script");
+
+        script.src = loaderUrl;
+
+        script.onload = () => {
+
+            createUnityInstance(
+                canvas,
+                config,
+                (progress) => {
+                    updateProgress(progress);
+                }
+            ).then((unityInstance) => {
+
+                updateProgress(100);
+
+                /* Erst nach vollständigem Laden ausblenden */
+                loadingCover.classList.add("hidden");
+
+                resizeGame();
+
+            }).catch((message) => {
+
+                loadingError.style.display = "block";
+                loadingError.textContent =
+                    "Loading error: " + message;
+
+                progressText.textContent = "Loading failed";
+            });
+        };
+
+        script.onerror = () => {
+
+            loadingError.style.display = "block";
+
+            loadingError.textContent =
+                "The Unity loader could not be loaded. Please reload the page.";
+
+            progressText.textContent = "Loading failed";
+        };
+
+        document.body.appendChild(script);
+    </script>
+
+    <!-- Cloudflare Analytics -->
+    <script
+        defer
+        src="https://static.cloudflareinsights.com/beacon.min.js"
+        data-cf-beacon='{"token": "2410bef32c094aab86a8241c494b76f2"}'>
+    </script>
+
+</body>
+</html>

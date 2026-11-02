@@ -8,7 +8,7 @@
 
   <title>Knight Attack</title>
 
-  <!-- Mittelalterliche Schriftart -->
+  <!-- Mittelalterliche Schrift -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&display=swap" rel="stylesheet">
@@ -30,8 +30,8 @@
     #game-container {
       position: fixed;
       inset: 0;
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100vh;
       background: #000;
       display: flex;
       align-items: center;
@@ -42,20 +42,20 @@
     #unity-canvas {
       display: block;
       flex: none;
-      width: 100vw;
-      height: 100vh;
       background: #000;
     }
 
-    /* Ladeanzeige */
+    /* Ladebildschirm */
     #loading-cover {
       position: absolute;
       inset: 0;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       background: #000;
       z-index: 10;
+      gap: 28px;
     }
 
     #loading-cover.hidden {
@@ -69,23 +69,30 @@
       font-weight: 800;
       letter-spacing: 2px;
       text-align: center;
-      padding: 20px;
+      padding: 15px;
       text-shadow:
         0 0 8px rgba(255, 140, 0, 0.8),
         0 0 20px rgba(255, 100, 0, 0.5);
-      animation: loadingGlow 2s ease-in-out infinite alternate;
     }
 
-    @keyframes loadingGlow {
+    /* Bewegender Ladekreis */
+    #loading-spinner {
+      width: 55px;
+      height: 55px;
+      border: 5px solid rgba(255, 140, 0, 0.2);
+      border-top: 5px solid #ff8c00;
+      border-right: 5px solid #ff8c00;
+      border-radius: 50%;
+      animation: spin 0.85s linear infinite;
+      box-shadow: 0 0 14px rgba(255, 140, 0, 0.35);
+    }
+
+    @keyframes spin {
       from {
-        text-shadow:
-          0 0 5px rgba(255, 140, 0, 0.5),
-          0 0 12px rgba(255, 100, 0, 0.3);
+        transform: rotate(0deg);
       }
       to {
-        text-shadow:
-          0 0 12px rgba(255, 140, 0, 1),
-          0 0 28px rgba(255, 100, 0, 0.8);
+        transform: rotate(360deg);
       }
     }
 
@@ -97,7 +104,7 @@
       z-index: 30;
       padding: 12px 18px;
       color: white;
-      background: rgba(25, 25, 25, 0.85);
+      background: rgba(25, 25, 25, 0.9);
       border: 2px solid white;
       border-radius: 8px;
       font-size: 15px;
@@ -108,55 +115,6 @@
     #fullscreen-button:active {
       background: #555;
     }
-
-    /* Hinweis bei Hochformat */
-    #rotate-message {
-      position: fixed;
-      inset: 0;
-      z-index: 20;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      background: #000;
-      color: white;
-      text-align: center;
-      font-family: Arial, sans-serif;
-      padding: 25px;
-    }
-
-    #rotate-message .rotate-icon {
-      font-size: 65px;
-      margin-bottom: 20px;
-    }
-
-    #rotate-message h2 {
-      font-size: 25px;
-      margin: 0 0 12px;
-    }
-
-    #rotate-message p {
-      font-size: 17px;
-      margin: 0;
-      color: #ccc;
-    }
-
-    @media screen and (orientation: portrait) {
-      #rotate-message {
-        display: flex;
-      }
-    }
-
-    /* Vollbild */
-    #game-container:fullscreen {
-      width: 100%;
-      height: 100%;
-      background: #000;
-    }
-
-    #game-container:fullscreen #fullscreen-button {
-      display: none;
-    }
   </style>
 </head>
 
@@ -164,7 +122,8 @@
 
   <div id="game-container">
 
-    <canvas id="unity-canvas"
+    <canvas
+      id="unity-canvas"
       width="2400"
       height="1080"
       tabindex="-1">
@@ -174,18 +133,14 @@
       <div id="loading-text">
         Knight Attack wird geladen
       </div>
+
+      <div id="loading-spinner"></div>
     </div>
 
     <button id="fullscreen-button" type="button">
       ⛶ Vollbild
     </button>
 
-  </div>
-
-  <div id="rotate-message">
-    <div class="rotate-icon">📱 ↻</div>
-    <h2>Bitte drehe dein Gerät</h2>
-    <p>Knight Attack ist für das Querformat gemacht.</p>
   </div>
 
   <script>
@@ -197,6 +152,7 @@
     canvas.width = 2400;
     canvas.height = 1080;
 
+    /* Spielgröße an Bildschirm anpassen */
     function resizeGame() {
       const cw = window.innerWidth;
       const ch = window.innerHeight;
@@ -204,7 +160,8 @@
       const targetRatio = 2400 / 1080;
       const availableRatio = cw / ch;
 
-      let width, height;
+      let width;
+      let height;
 
       if (availableRatio > targetRatio) {
         height = ch;
@@ -227,7 +184,7 @@
 
     resizeGame();
 
-    /* Vollbild aktivieren */
+    /* Vollbild ein- und ausschalten */
     fullscreenButton.addEventListener("click", async () => {
       try {
         if (!document.fullscreenElement) {
@@ -235,7 +192,6 @@
             await gameContainer.requestFullscreen();
           }
 
-          /* Querformat versuchen */
           if (screen.orientation && screen.orientation.lock) {
             try {
               await screen.orientation.lock("landscape");
@@ -243,18 +199,26 @@
               console.log("Querformatsperre nicht unterstützt.");
             }
           }
+        } else {
+          await document.exitFullscreen();
         }
       } catch (e) {
-        console.log("Vollbild wird nicht unterstützt.");
+        console.log("Vollbild nicht verfügbar:", e);
       }
 
       resizeGame();
     });
 
-    document.addEventListener("fullscreenchange", resizeGame);
+    document.addEventListener("fullscreenchange", () => {
+      fullscreenButton.textContent =
+        document.fullscreenElement ? "⛶ Vollbild verlassen" : "⛶ Vollbild";
 
-    /* Unity laden */
+      resizeGame();
+    });
+
+    /* Unity Build laden */
     const buildUrl = "Build";
+
     const loaderUrl = buildUrl + "/Knight Attack updates.loader.js";
 
     const config = {
@@ -272,22 +236,29 @@
     script.src = loaderUrl;
 
     script.onload = () => {
-      createUnityInstance(canvas, config, () => {})
-        .then(() => {
-          loadingCover.classList.add("hidden");
-          resizeGame();
-        })
-        .catch((message) => {
-          loadingCover.innerHTML =
-            '<div style="color:#fff;font-family:Arial,sans-serif;text-align:center;padding:20px;">Unable to load the game.<br><br>' +
-            message +
-            '</div>';
-        });
+
+      createUnityInstance(canvas, config, (progress) => {
+        // Unity lädt im Hintergrund.
+      })
+      .then(() => {
+        loadingCover.classList.add("hidden");
+        resizeGame();
+      })
+      .catch((message) => {
+        loadingCover.innerHTML =
+          '<div style="color:#ff8c00;font-family:Georgia,serif;text-align:center;padding:20px;">' +
+          'Knight Attack konnte nicht geladen werden.<br><br>' +
+          message +
+          '</div>';
+      });
     };
 
     script.onerror = () => {
       loadingCover.innerHTML =
-        '<div style="color:#ff8c00;font-family:Georgia,serif;text-align:center;padding:20px;">Knight Attack konnte nicht geladen werden.</div>';
+        '<div style="color:#ff8c00;font-family:Georgia,serif;text-align:center;padding:20px;">' +
+        'Die Unity-Ladedatei konnte nicht gefunden werden.<br>' +
+        'Bitte überprüfe den Build-Ordner.' +
+        '</div>';
     };
 
     document.body.appendChild(script);
